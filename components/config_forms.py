@@ -107,7 +107,7 @@ class ConfigForms:
         
         return info_local, info_remoto
 
-    def _render_device_selection(self, tenant_sites: List[Dict]) -> Optional[Tuple[int, int, int]]:
+    def _render_device_selection(self, tenant_sites: List[Dict], key_suffix: str = "") -> Optional[Tuple[int, int, int]]:
         """Renderiza seleção de dispositivo comum"""
         st.markdown("### 🖥️ Seleção de Dispositivo")
         
@@ -116,7 +116,7 @@ class ConfigForms:
             "Site *",
             options=list(site_dict.keys()),
             format_func=lambda sid: site_dict[sid],
-            key="device_site"
+            key=f"device_site{key_suffix}"
         )
         
         site_devices = self.netbox.get_devices(site_id=selected_site)
@@ -133,7 +133,7 @@ class ConfigForms:
                 "Dispositivo *",
                 options=list(device_dict.keys()),
                 format_func=lambda did: device_dict[did],
-                key="selected_device"
+                key=f"selected_device{key_suffix}"
             )
         
         with col2:
@@ -141,9 +141,9 @@ class ConfigForms:
                 "VLAN ID *",
                 min_value=2,
                 max_value=4094,
-                value=100,
+                value=100 if not key_suffix else 200,
                 step=1,
-                key="vlan_id"
+                key=f"vlan_id{key_suffix}"
             )
         
         if selected_device:
@@ -155,7 +155,7 @@ class ConfigForms:
                     "Interface *",
                     options=list(interface_dict.keys()),
                     format_func=lambda iid: interface_dict[iid],
-                    key="selected_interface"
+                    key=f"selected_interface{key_suffix}"
                 )
                 
                 return selected_device, vlan_id, selected_interface
@@ -410,7 +410,8 @@ class ConfigForms:
         customer_name = st.text_input(
             "Nome do Cliente *",
             placeholder="CL-FULANO_DE_TAL ou AS1234-FULANO_DE_TAL",
-            help="Nome deve começar com CL- ou AS"
+            help="Nome deve começar com CL- ou AS",
+            key="customer_name_l2vpn_ptp"
         )
         
         if not self._validate_customer_name(customer_name):
@@ -419,7 +420,7 @@ class ConfigForms:
         
         # Site A
         st.markdown("### 📍 Site A")
-        device_selection_a = self._render_device_selection(tenant_sites)
+        device_selection_a = self._render_device_selection(tenant_sites, key_suffix="_a")
         if not device_selection_a:
             return None
         
@@ -427,107 +428,76 @@ class ConfigForms:
         
         # Site B
         st.markdown("### 📍 Site B")
-        # Duplicar lógica para Site B com keys diferentes
-        site_dict = {site["id"]: site["name"] for site in tenant_sites}
-        selected_site_b = st.selectbox(
-            "Site B *",
-            options=list(site_dict.keys()),
-            format_func=lambda sid: site_dict[sid],
-            key="device_site_b"
-        )
-        
-        site_devices_b = self.netbox.get_devices(site_id=selected_site_b)
-        if not site_devices_b:
-            st.warning("⚠️ Nenhum dispositivo encontrado no Site B")
+        device_selection_b = self._render_device_selection(tenant_sites, key_suffix="_b")
+        if not device_selection_b:
             return None
         
-        col1, col2 = st.columns([0.75, 0.25])
-        with col1:
-            device_dict_b = {d["id"]: d["name"] for d in site_devices_b}
-            selected_device_b = st.selectbox(
-                "Dispositivo B *",
-                options=list(device_dict_b.keys()),
-                format_func=lambda did: device_dict_b[did],
-                key="selected_device_b"
-            )
-        
-        with col2:
-            vlan_id_b = st.number_input(
-                "VLAN ID B *",
-                min_value=2,
-                max_value=4094,
-                value=200,
-                step=1,
-                key="vlan_id_b"
-            )
-        
-        selected_interface_b = None
-        if selected_device_b:
-            interfaces_b = self.netbox.get_device_interfaces(selected_device_b)
-            if interfaces_b:
-                interface_dict_b = {iface["id"]: iface["name"] for iface in interfaces_b}
-                selected_interface_b = st.selectbox(
-                    "Interface B *",
-                    options=list(interface_dict_b.keys()),
-                    format_func=lambda iid: interface_dict_b[iid],
-                    key="selected_interface_b"
-                )
-        
-        if not selected_interface_b:
-            return None
+        selected_device_b, vlan_id_b, selected_interface_b = device_selection_b
         
         # Botão para gerar configuração
         if st.button("🎯 Gerar Configuração L2VPN PtP", type="primary"):
-            selected_device_a, vlan_id_a, selected_interface_a = device_selection_a
             
-            # Buscar nomes dos dispositivos para usar no template
-            device_name_a = None
-            device_name_b = None
+            # Inicializar variáveis de nomes
+            interface_name_a = f"Interface-{selected_interface_a}"
+            interface_name_b = f"Interface-{selected_interface_b}"
+            device_name_a = f"Device-{selected_device_a}"
+            device_name_b = f"Device-{selected_device_b}"
             
-            # Buscar nome do dispositivo A
-            for site in tenant_sites:
-                site_devices = self.netbox.get_devices(site_id=site["id"])
-                for device in site_devices:
-                    if device["id"] == selected_device_a:
-                        device_name_a = device["name"]
+            # Buscar nomes das interfaces
+            try:
+                interfaces_a = self.netbox.get_device_interfaces(selected_device_a)
+                for iface in interfaces_a:
+                    if iface["id"] == selected_interface_a:
+                        interface_name_a = iface["name"]
                         break
-                if device_name_a:
-                    break
+            except Exception:
+                pass
             
-            # Buscar nome do dispositivo B
-            for site in tenant_sites:
-                site_devices = self.netbox.get_devices(site_id=site["id"])
-                for device in site_devices:
-                    if device["id"] == selected_device_b:
-                        device_name_b = device["name"]
+            try:
+                interfaces_b = self.netbox.get_device_interfaces(selected_device_b)
+                for iface in interfaces_b:
+                    if iface["id"] == selected_interface_b:
+                        interface_name_b = iface["name"]
                         break
-                if device_name_b:
-                    break
+            except Exception:
+                pass
+            
+            # Buscar nomes dos dispositivos
+            try:
+                for site in tenant_sites:
+                    site_devices = self.netbox.get_devices(site_id=site["id"])
+                    for device in site_devices:
+                        if device["id"] == selected_device_a:
+                            device_name_a = device["name"]
+                        elif device["id"] == selected_device_b:
+                            device_name_b = device["name"]
+            except Exception:
+                pass
             
             return {
                 "service_type": "l2vpn_ptp",
                 "customer_name": customer_name,
                 "site_a": {
                     "device_id": selected_device_a,
-                    "device_name": device_name_a or f"Device-{selected_device_a}",
+                    "device_name": device_name_a,
                     "vlan_id": vlan_id_a,
                     "interface_id": selected_interface_a,
-                    "interface_name": interface_name_a or f"Interface-{selected_interface_a}"
+                    "interface_name": interface_name_a
                 },
                 "site_b": {
                     "device_id": selected_device_b,
-                    "device_name": device_name_b or f"Device-{selected_device_b}",
+                    "device_name": device_name_b,
                     "vlan_id": vlan_id_b,
                     "interface_id": selected_interface_b,
-                    "interface_name": interface_name_b or f"Interface-{selected_interface_b}"
+                    "interface_name": interface_name_b
                 },
                 # Variáveis diretas para compatibilidade com templates antigos
                 "device_a": selected_device_a,
                 "device_b": selected_device_b,
                 "vlan_id_a": vlan_id_a,
                 "vlan_id_b": vlan_id_b,
-                "interface_a": interface_name_a or f"Interface-{selected_interface_a}",
-                "interface_b": interface_name_b or f"Interface-{selected_interface_b}",
+                "interface_a": interface_name_a,
+                "interface_b": interface_name_b,
                 "selected_device_a": selected_device_a,
                 "selected_device_b": selected_device_b,
                 "selected_interface_a": selected_interface_a,
@@ -572,7 +542,7 @@ class ConfigForms:
             return None
         
         # Seleção de dispositivo
-        device_selection = self._render_device_selection(tenant_sites)
+        device_selection = self._render_device_selection(tenant_sites, key_suffix=f"_{service_type}")
         if not device_selection:
             return None
         
