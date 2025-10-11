@@ -423,6 +423,8 @@ class ConfigForms:
         if not device_selection_a:
             return None
         
+        selected_device_a, vlan_id_a, selected_interface_a = device_selection_a
+        
         # Site B
         st.markdown("### 📍 Site B")
         # Duplicar lógica para Site B com keys diferentes
@@ -478,19 +480,58 @@ class ConfigForms:
         if st.button("🎯 Gerar Configuração L2VPN PtP", type="primary"):
             selected_device_a, vlan_id_a, selected_interface_a = device_selection_a
             
+            # Buscar nomes dos dispositivos para usar no template
+            device_name_a = None
+            device_name_b = None
+            
+            # Buscar nome do dispositivo A
+            for site in tenant_sites:
+                site_devices = self.netbox.get_devices(site_id=site["id"])
+                for device in site_devices:
+                    if device["id"] == selected_device_a:
+                        device_name_a = device["name"]
+                        break
+                if device_name_a:
+                    break
+            
+            # Buscar nome do dispositivo B
+            for site in tenant_sites:
+                site_devices = self.netbox.get_devices(site_id=site["id"])
+                for device in site_devices:
+                    if device["id"] == selected_device_b:
+                        device_name_b = device["name"]
+                        break
+                if device_name_b:
+                    break
+            
             return {
                 "service_type": "l2vpn_ptp",
                 "customer_name": customer_name,
                 "site_a": {
-                    "device": selected_device_a,
+                    "device_id": selected_device_a,
+                    "device_name": device_name_a or f"Device-{selected_device_a}",
                     "vlan_id": vlan_id_a,
-                    "interface": selected_interface_a
+                    "interface_id": selected_interface_a,
+                    "interface_name": interface_name_a or f"Interface-{selected_interface_a}"
                 },
                 "site_b": {
-                    "device": selected_device_b,
+                    "device_id": selected_device_b,
+                    "device_name": device_name_b or f"Device-{selected_device_b}",
                     "vlan_id": vlan_id_b,
-                    "interface": selected_interface_b
-                }
+                    "interface_id": selected_interface_b,
+                    "interface_name": interface_name_b or f"Interface-{selected_interface_b}"
+                },
+                # Variáveis diretas para compatibilidade com templates antigos
+                "device_a": selected_device_a,
+                "device_b": selected_device_b,
+                "vlan_id_a": vlan_id_a,
+                "vlan_id_b": vlan_id_b,
+                "interface_a": interface_name_a or f"Interface-{selected_interface_a}",
+                "interface_b": interface_name_b or f"Interface-{selected_interface_b}",
+                "selected_device_a": selected_device_a,
+                "selected_device_b": selected_device_b,
+                "selected_interface_a": selected_interface_a,
+                "selected_interface_b": selected_interface_b
             }
         
         return None

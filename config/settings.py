@@ -24,7 +24,7 @@ class MenuItem:
     label: str
     icon: str
     page: str
-    children: List['MenItem'] = None
+    children: List['MenuItem'] = None
 
     def has_children(self) -> bool:
         return self.children is not None and len(self.children) > 0
@@ -92,4 +92,3 @@ class AppConfig:
 
     # Configurações de cache
     CACHE_TTL = 3600 # 1hora
-    
