@@ -1,0 +1,16 @@
+.git
+.gitignore
+__pycache__/
+*.pyc
+.venv/
+*.log
+.build/
+.cache/
+node_modules/
+dist/
+*.ipynb
+*.db
+.env
+Dockerfile
+docker-compose*.yml
+tests/
