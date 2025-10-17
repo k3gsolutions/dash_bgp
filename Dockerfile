@@ -44,7 +44,7 @@ ENV START_CMD=streamlit
 #   CMD curl -f http://localhost:${PORT}/ || exit 1
 
 # Exponha a porta (documental; o mapeamento real é do orquestrador)
-EXPOSE 80
+EXPOSE 8501
 EXPOSE 8000
 
 # ENTRYPOINT escolhe o modo em runtime
@@ -53,7 +53,7 @@ CMD ["/bin/bash", "-lc", "\
      echo '>> Starting API (uvicorn api:app) on port ' ${PORT:-8000} ';' \
      python -m uvicorn api:app --host 0.0.0.0 --port ${PORT:-8000}; \
   else \
-     echo '>> Starting Streamlit (app.py) on port ' ${PORT:-80} ';' \
-     python -m streamlit run app.py --server.port ${PORT:-80} --server.address 0.0.0.0; \
+     echo '>> Starting Streamlit (app.py) on port ' ${PORT:-8501} ';' \
+     python -m streamlit run app.py --server.port ${PORT:-8501} --server.address 0.0.0.0; \
   fi \
 "]
