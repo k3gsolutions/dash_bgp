@@ -1,0 +1,25 @@
+services:
+  dash_bgp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dash_bgp
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${HOST_PORT:-8501}:8501"
+    volumes:
+      # Volume nomeado para persistência do SQLite
+      - dash_bgp_data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    # Se seu app precisar de rede bridge default, mantenha assim.
+    # Se precisar acessar SNMP/local, adicione capabilities/redes conforme sua necessidade.
+
+volumes:
+  dash_bgp_data:
+    # Named volume (Docker cuida do caminho absoluto)
