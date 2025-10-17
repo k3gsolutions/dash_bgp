@@ -365,7 +365,7 @@ ip community-filter basic GLOBAL-EXPORT-UPSTREAM-NOEXPORT index 10 permit 64777:
 ip community-filter basic GLOBAL-EXPORT-UPSTREAM-P1 index 10 permit 64777:60001
 ip community-filter basic GLOBAL-EXPORT-UPSTREAM-P2 index 10 permit 64777:60002
 ip community-filter basic GLOBAL-EXPORT-UPSTREAM-P3 index 10 permit 64777:60003
-ip community-filter basic GLOBAL-EXPORT-UPSTREAM-P4 index 10 permit 64777:6000
+ip community-filter basic GLOBAL-EXPORT-UPSTREAM-P4 index 10 permit 64777:60004
 ip community-filter basic GLOBAL-EXPORT-UPSTREAM-P5 index 10 permit 64777:60005
 ###
 

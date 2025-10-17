@@ -360,17 +360,26 @@ class ConfigForms:
         st.markdown("## 🔧 Configuração L2VPN - VLAN")
         st.markdown("---")
         
-        # Nome do cliente
-        customer_name = st.text_input(
-            "Nome do Cliente *",
-            placeholder="CL-FULANO_DE_TAL ou AS1234-FULANO_DE_TAL",
-            help="Nome deve começar com CL- ou AS"
-        )
+        # Nome do cliente e ID do circuito
+        col1, col2 = st.columns([1, 3])
+        with col1:
+            circuito = st.text_input(
+                "ID *",
+                placeholder="03",
+                help="Número inteiro de dois dígitos (Ex: 03)",
+                key="circuito_id"
+            )
+        with col2:
+            customer_name = st.text_input(
+                "Nome do Cliente *",
+                placeholder="CL-FULANO_DE_TAL ou AS1234-FULANO_DE_TAL",
+                help="Nome deve começar com CL- ou AS"
+            )
         
         if not self._validate_customer_name(customer_name):
             st.warning("⚠️ Nome do cliente deve começar com 'CL-' ou 'AS'")
             return None
-        
+            
         # Seleção de dispositivo
         device_selection = self._render_device_selection(tenant_sites)
         if not device_selection:
@@ -378,15 +387,22 @@ class ConfigForms:
         
         selected_device, vlan_id, selected_interface = device_selection
         
-        # Circuito (opcional)
-        show_circuito = st.checkbox("Adicionar informações de circuito", value=False)
-        circuito = None
-        if show_circuito:
-            circuito = st.text_input(
-                "Circuito/Tag",
-                placeholder="Ex: CIRCUITO-12345",
-                help="Informação adicional sobre o circuito"
-            )
+        # Circuito (obrigatório - ID)
+        circuito = st.text_input(
+            "ID *",
+            placeholder="Ex: 03",
+            help="Número de identificação do circuito (até 2 dígitos)"
+        )
+        
+        # Validação do campo ID (circuito)
+        if not circuito:
+            st.warning("⚠️ O campo ID é obrigatório")
+            return None
+            
+        is_valid_circuito = circuito.isdigit() and len(circuito) <= 2
+        if not is_valid_circuito:
+            st.warning("⚠️ O campo ID deve ser um número inteiro de até dois dígitos (Ex: 03)")
+            return None
         
         # Botão para gerar configuração
         if st.button("🎯 Gerar Configuração L2VPN VLAN", type="primary"):
@@ -396,7 +412,7 @@ class ConfigForms:
                 "selected_device": selected_device,
                 "vlan_id": vlan_id,
                 "selected_interface": selected_interface,
-                "circuito": circuito if show_circuito else None
+                "circuito": circuito
             }
         
         return None
@@ -406,13 +422,22 @@ class ConfigForms:
         st.markdown("## 🔧 Configuração L2VPN - Point to Point")
         st.markdown("---")
         
-        # Nome do cliente
-        customer_name = st.text_input(
-            "Nome do Cliente *",
-            placeholder="CL-FULANO_DE_TAL ou AS1234-FULANO_DE_TAL",
-            help="Nome deve começar com CL- ou AS",
-            key="customer_name_l2vpn_ptp"
-        )
+        # Nome do cliente e ID do circuito
+        col1, col2 = st.columns([1, 3])
+        with col1:
+            circuito = st.text_input(
+                "ID *",
+                placeholder="03",
+                help="Número inteiro de dois dígitos (Ex: 03)",
+                key="circuito_id_l2vpn_ptp"
+            )
+        with col2:
+            customer_name = st.text_input(
+                "Nome do Cliente *",
+                placeholder="CL-FULANO_DE_TAL ou AS1234-FULANO_DE_TAL",
+                help="Nome deve começar com CL- ou AS",
+                key="customer_name_l2vpn_ptp"
+            )
         
         if not self._validate_customer_name(customer_name):
             st.warning("⚠️ Nome do cliente deve começar com 'CL-' ou 'AS'")
@@ -477,6 +502,7 @@ class ConfigForms:
             return {
                 "service_type": "l2vpn_ptp",
                 "customer_name": customer_name,
+                "circuito": circuito.zfill(2),
                 "site_a": {
                     "device_id": selected_device_a,
                     "device_name": device_name_a,
@@ -522,13 +548,22 @@ class ConfigForms:
         st.markdown(titles.get(service_type, "## 🔧 Configuração BGP"))
         st.markdown("---")
         
-        # Nome do cliente
-        customer_name = st.text_input(
-            "Nome do Cliente *",
-            placeholder="CL-FULANO_DE_TAL ou AS1234-FULANO_DE_TAL",
-            help="Nome deve começar com CL- ou AS",
-            key=f"customer_name_bgp_{service_type}"
-        )
+        # Nome do cliente e ID do circuito
+        col1, col2 = st.columns([1, 3])
+        with col1:
+            circuito = st.text_input(
+                "ID *",
+                placeholder="03",
+                help="Número inteiro de dois dígitos (Ex: 03)",
+                key=f"circuito_id_bgp_{service_type}"
+            )
+        with col2:
+            customer_name = st.text_input(
+                "Nome do Cliente *",
+                placeholder="CL-FULANO_DE_TAL ou AS1234-FULANO_DE_TAL",
+                help="Nome deve começar com CL- ou AS",
+                key=f"customer_name_bgp_{service_type}"
+            )
         
         if not self._validate_customer_name(customer_name):
             st.warning("⚠️ Nome do cliente deve começar com 'CL-' ou 'AS'")
@@ -578,25 +613,28 @@ class ConfigForms:
                     key=f"md5_v6_{service_type}"
                 )
         
-        # Circuito (opcional)
-        show_circuito = st.checkbox("Adicionar informações de circuito", value=False, key=f"circuito_{service_type}")
-        circuito = None
-        if show_circuito:
-            circuito = st.text_input(
-                "Circuito/Tag",
-                placeholder="Ex: CIRCUITO-12345",
-                help="Informação adicional sobre o circuito",
-                key=f"circuito_input_{service_type}"
-            )
+        # O campo Circuito/Tag foi removido conforme solicitado
+        # Utilizamos apenas o campo ID (circuito) adicionado anteriormente
         
         # Validação final e botão
         has_prefixes = len(ipv4_prefixes) > 0 or len(ipv6_prefixes) > 0
+        
+        # Validação do campo ID (circuito)
+        if not circuito:
+            st.warning("⚠️ O campo ID é obrigatório")
+            is_valid_circuito = False
+        else:
+            is_valid_circuito = circuito.isdigit() and len(circuito) <= 2
+            if not is_valid_circuito:
+                st.warning("⚠️ O campo ID deve ser um número inteiro de até dois dígitos (Ex: 03)")
+        
         can_generate = (
             customer_name and 
             asn_local and 
             asn_remoto and 
             has_prefixes and
-            peer_info
+            peer_info and
+            is_valid_circuito  # Validação do campo ID (circuito)
         )
         
         if not has_prefixes:
@@ -618,11 +656,9 @@ class ConfigForms:
                 "check_md5": check_md5,
                 "md5_v4": md5_v4 if check_md5 else "",
                 "md5_v6": md5_v6 if check_md5 else "",
+                "circuito": circuito.zfill(2),  # Usando o valor do campo ID, formatado com dois dígitos
                 **peer_info
             }
-            
-            if show_circuito and circuito:
-                result["circuito"] = circuito
             
             return result
         
