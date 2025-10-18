@@ -41,6 +41,9 @@ class Sidebar:
             # Após o botão "Gerar Configuração", adiciona o seletor de tenant
             if item.id == "gera_config" and self.state.get('current_page') == "gera_config":
                 self._render_tenant_selector()
+                
+                # Adiciona o menu de Tipo de Serviço após o seletor de tenant
+                self._render_service_tree()
     
     def _render_menu_item(self, item: MenuItem, level: int = 0):
         """Renderiza um item do menu recursivamente"""
@@ -95,6 +98,21 @@ class Sidebar:
             self.state.set('selected_tenant_id', selected_tenant_id)
             self.state.set('selected_tenant_name', tenant_options[selected_tenant_id])
     
+    def _render_service_tree(self):
+        """Renderiza a árvore de serviços na sidebar"""
+        if self.state.get('current_page') == "gera_config":
+            st.markdown("---")
+            st.subheader("🌳 Tipo de Serviço")
+            
+            # Importar o ServiceTreeBuilder
+            from components.service_tree import ServiceTreeBuilder
+            
+            # Renderizar a árvore de serviços de forma responsiva
+            ServiceTreeBuilder.render_responsive_tree(
+                container=st,
+                show_toggle=True
+            )
+    
     def _render_footer(self):
         """Renderiza o rodapé da sidebar"""
         st.divider()
@@ -102,3 +120,27 @@ class Sidebar:
         if self.state.get('sidebar_expanded'):
             st.caption("© 2025 K3G Solutions")
             st.caption("v1.0.0")
+    def _render_service_tree(self):
+        """Renderiza a árvore de serviços na sidebar"""
+        if self.state.get('current_page') == "gera_config":
+            st.markdown("---")
+            st.subheader("🌳 Tipo de Serviço")
+            
+            # Importar o ServiceTreeBuilder
+            from components.service_tree import ServiceTreeBuilder
+            
+            # Função de callback para quando um serviço for selecionado
+            def on_service_select(selected_dict):
+                if selected_dict and selected_dict.get("checked"):
+                    self.state.set('selected_service', selected_dict["checked"][0])
+            
+            # Renderizar a árvore de serviços de forma responsiva
+            selected_service_dict = ServiceTreeBuilder.render_responsive_tree(
+                container=st,
+                on_select=on_service_select,
+                show_toggle=True
+            )
+            
+            # Armazenar o serviço selecionado no estado da sessão
+            if selected_service_dict and selected_service_dict.get("checked"):
+                self.state.set('selected_service', selected_service_dict["checked"][0])
