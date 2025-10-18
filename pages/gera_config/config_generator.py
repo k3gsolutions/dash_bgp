@@ -63,17 +63,10 @@ def render():
         st.info("Cadastre sites para este cliente no Netbox antes de gerar configurações.")
         return
     
-    # Árvore de serviços
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("🌳 Tipo de Serviço")
-    
-    nodes = ServiceTreeBuilder.build()
-    
-    selected_service_dict = tree_select(
-        nodes=nodes,
-        show_expand_all=True,
-        key="service_tree"
-    )
+    # Obter o serviço selecionado do estado da sessão
+    from core.session_state import SessionStateManager
+    state_manager = SessionStateManager()
+    selected_service_dict = {"checked": [state_manager.get('selected_service')]} if state_manager.get('selected_service') else None
     
     # Verificar se algum serviço foi selecionado
     if not selected_service_dict or not selected_service_dict.get("checked"):
