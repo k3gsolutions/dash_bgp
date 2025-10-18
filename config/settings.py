@@ -44,6 +44,12 @@ class AppConfig:
             page="home"
         ),
         MenuItem(
+            id="gera_config",
+            label="Gerar Configuração",
+            icon="⚙️",
+            page="gera_config"
+        ),
+        MenuItem(
             id="cadastro",
             label="Cadastro",
             icon="📝",
@@ -64,12 +70,6 @@ class AppConfig:
                 MenuItem(id="consulta_cliente", label="Cliente", icon="👤", page="consulta.cliente"),
                 MenuItem(id="consulta_dispositivo", label="Dispositivo", icon="💻", page="consulta.dispositivo"),
             ]
-        ),
-        MenuItem(
-            id="gera_config",
-            label="Gerar Configuração",
-            icon="⚙️",
-            page="gera_config"
         ),
         MenuItem(
             id="tools",

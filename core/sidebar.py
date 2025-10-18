@@ -34,8 +34,13 @@ class Sidebar:
     
     def _render_menu(self):
         """Renderiza o menu de navegação"""
-        for item in self.config.MENU_STRUCTURE:
+        # Renderiza os itens do menu
+        for i, item in enumerate(self.config.MENU_STRUCTURE):
             self._render_menu_item(item)
+            
+            # Após o botão "Gerar Configuração", adiciona o seletor de tenant
+            if item.id == "gera_config" and self.state.get('current_page') == "gera_config":
+                self._render_tenant_selector()
     
     def _render_menu_item(self, item: MenuItem, level: int = 0):
         """Renderiza um item do menu recursivamente"""
@@ -56,6 +61,39 @@ class Sidebar:
             ):
                 self.state.set('current_page', item.page)
                 st.rerun()
+    
+    def _render_tenant_selector(self):
+        """Renderiza o seletor de tenant (cliente) na sidebar"""
+        from services.netbox_service import NetboxService
+        
+        #st.markdown("---")
+        st.subheader("📋 Seleção de Cliente")
+        
+        # Inicializar serviço do Netbox
+        netbox = NetboxService()
+        
+        # Buscar tenants
+        with st.spinner("Carregando clientes..."):
+            tenants = netbox.get_tenants()
+        
+        if not tenants:
+            st.error("❌ Nenhum tenant encontrado")
+            return
+        
+        tenant_options = {tenant["id"]: tenant["name"] for tenant in tenants}
+        tenant_list = ["< Selecione o Cliente >"] + list(tenant_options.keys())
+        
+        selected_tenant_id = st.selectbox(
+            "Cliente",
+            options=tenant_list,
+            format_func=lambda x: tenant_options[x] if x in tenant_options else x,
+            key="tenant_selector_main"
+        )
+        
+        # Armazenar o tenant selecionado no estado da sessão
+        if selected_tenant_id != "< Selecione o Cliente >":
+            self.state.set('selected_tenant_id', selected_tenant_id)
+            self.state.set('selected_tenant_name', tenant_options[selected_tenant_id])
     
     def _render_footer(self):
         """Renderiza o rodapé da sidebar"""

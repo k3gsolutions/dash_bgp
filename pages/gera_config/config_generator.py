@@ -17,30 +17,14 @@ def render():
     template_service = TemplateService()
     forms = ConfigForms()
     
-    # Seleção de Tenant
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("📋 Seleção de Cliente")
+    # Obter o tenant selecionado da sessão
+    from core.session_state import SessionStateManager
+    state = SessionStateManager()
     
-    # Buscar tenants
-    with st.spinner("Carregando clientes..."):
-        tenants = netbox.get_tenants()
+    selected_tenant_id = state.get('selected_tenant_id')
+    selected_tenant_name = state.get('selected_tenant_name')
     
-    if not tenants:
-        st.error("❌ Nenhum tenant encontrado no Netbox")
-        st.info("Verifique se o Netbox está configurado corretamente e contém tenants cadastrados.")
-        return
-    
-    tenant_options = {tenant["id"]: tenant["name"] for tenant in tenants}
-    tenant_list = ["< Selecione o Cliente >"] + list(tenant_options.keys())
-    
-    selected_tenant_id = st.sidebar.selectbox(
-        "Cliente",
-        options=tenant_list,
-        format_func=lambda x: tenant_options[x] if x in tenant_options else x,
-        key="tenant_selector_config"
-    )
-    
-    if selected_tenant_id == "< Selecione o Cliente >":
+    if not selected_tenant_id or selected_tenant_id == "< Selecione o Cliente >":
         st.info("👈 Por favor, selecione um cliente na barra lateral para continuar")
         
         # Exibir informações úteis
@@ -71,11 +55,11 @@ def render():
         return
     
     # Buscar sites do tenant
-    with st.spinner(f"Carregando sites de {tenant_options[selected_tenant_id]}..."):
+    with st.spinner(f"Carregando sites de {selected_tenant_name}..."):
         tenant_sites = netbox.get_sites(tenant_id=selected_tenant_id)
     
     if not tenant_sites:
-        st.warning(f"⚠️ Nenhum site encontrado para o cliente {tenant_options[selected_tenant_id]}")
+        st.warning(f"⚠️ Nenhum site encontrado para o cliente {selected_tenant_name}")
         st.info("Cadastre sites para este cliente no Netbox antes de gerar configurações.")
         return
     
@@ -99,7 +83,7 @@ def render():
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            st.metric("Cliente Selecionado", tenant_options[selected_tenant_id])
+            st.metric("Cliente Selecionado", selected_tenant_name)
         
         with col2:
             st.metric("Total de Sites", len(tenant_sites))
