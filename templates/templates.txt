@@ -691,62 +691,62 @@ ip community-filter basic EXPORT-ALL-CDN-P4 permit 64777:60024
 ip community-filter basic EXPORT-ALL-CDN-P5 permit 64777:60025
 
 !## EXCLUSIVE-CDN  
-ip community-filter basic C{{ circuito }}-RECEIVED permit 64777:10094  
-ip community-filter basic C{{ circuito }}-EXPORT-P1 permit 64777:5{{ circuito }}01  
-ip community-filter basic C{{ circuito }}-EXPORT-P2 permit 64777:5{{ circuito }}02  
-ip community-filter basic C{{ circuito }}-EXPORT-P3 permit 64777:5{{ circuito }}03  
-ip community-filter basic C{{ circuito }}-EXPORT-P4 permit 64777:5{{ circuito }}04  
-ip community-filter basic C{{ circuito }}-EXPORT-P5 permit 64777:5{{ circuito }}05  
-ip community-filter basic C{{ circuito }}-EXPORT-BLOCK permit 64777:5{{ circuito }}67
+ip community-filter basic C{{ circuito }}-{{ customer_name }-RECEIVED permit 64777:10094  
+ip community-filter basic C{{ circuito }}-{{ customer_name }-EXPORT-P1 permit 64777:5{{ circuito }}01  
+ip community-filter basic C{{ circuito }}-{{ customer_name }-EXPORT-P2 permit 64777:5{{ circuito }}02  
+ip community-filter basic C{{ circuito }}-{{ customer_name }-EXPORT-P3 permit 64777:5{{ circuito }}03  
+ip community-filter basic C{{ circuito }}-{{ customer_name }-EXPORT-P4 permit 64777:5{{ circuito }}04  
+ip community-filter basic C{{ circuito }}-{{ customer_name }-EXPORT-P5 permit 64777:5{{ circuito }}05  
+ip community-filter basic C{{ circuito }}-{{ customer_name }-EXPORT-BLOCK permit 64777:5{{ circuito }}67
    
 ##POLICIES**  
-route-policy C{{ circuito }}-EXPORT deny node 1010  
- if-match community-filter C{{ circuito }}-EXPORT-BLOCK  
+route-policy C{{ circuito }}-{{ customer_name }-EXPORT deny node 1010  
+ if-match community-filter C{{ circuito }}-{{ customer_name }-EXPORT-BLOCK  
 #                
-route-policy C{{ circuito }}-EXPORT permit node 2001  
- if-match community-filter C{{ circuito }}-EXPORT-P1  
+route-policy C{{ circuito }}-{{ customer_name }-EXPORT permit node 2001  
+ if-match community-filter C{{ circuito }}-{{ customer_name }-EXPORT-P1  
 #  
-route-policy C{{ circuito }}-EXPORT permit node 2002  
- if-match community-filter C{{ circuito }}-EXPORT-P2  
+route-policy C{{ circuito }}-{{ customer_name }-EXPORT permit node 2002  
+ if-match community-filter C{{ circuito }}-{{ customer_name }-EXPORT-P2  
  apply as-path {{ asn_local }} additive  
 #  
-route-policy C{{ circuito }}-EXPORT permit node 2003  
- if-match community-filter C{{ circuito }}-EXPORT-P3  
+route-policy C{{ circuito }}-{{ customer_name }-EXPORT permit node 2003  
+ if-match community-filter C{{ circuito }}-{{ customer_name }-EXPORT-P3  
  apply as-path {{ asn_local }} {{ asn_local }} additive  
 #  
-route-policy C{{ circuito }}-EXPORT permit node 2004  
- if-match community-filter C{{ circuito }}-EXPORT-P4  
+route-policy C{{ circuito }}-{{ customer_name }-EXPORT permit node 2004  
+ if-match community-filter C{{ circuito }}-{{ customer_name }-EXPORT-P4  
  apply as-path {{ asn_local }} {{ asn_local }} {{ asn_local }} additive  
 #  
-route-policy C{{ circuito }}-EXPORT permit node 2005  
- if-match community-filter C{{ circuito }}-EXPORT-P5  
+route-policy C{{ circuito }}-{{ customer_name }-EXPORT permit node 2005  
+ if-match community-filter C{{ circuito }}-{{ customer_name }-EXPORT-P5  
  apply as-path {{ asn_local }} {{ asn_local }} {{ asn_local }} {{ asn_local }} additive  
 #  
 #  
-route-policy C{{ circuito }}-EXPORT permit node 2011  
+route-policy C{{ circuito }}-{{ customer_name }-EXPORT permit node 2011  
  if-match community-filter EXPORT-ALL-CDN-P1  
 #  
-route-policy C{{ circuito }}-EXPORT permit node 2012  
+route-policy C{{ circuito }}-{{ customer_name }-EXPORT permit node 2012  
  if-match community-filter EXPORT-ALL-CDN-P2  
  apply as-path {{ asn_local }} additive  
 #  
-route-policy C{{ circuito }}-EXPORT permit node 2013  
+route-policy C{{ circuito }}-{{ customer_name }-EXPORT permit node 2013  
  if-match community-filter EXPORT-ALL-CDN-P3  
  apply as-path {{ asn_local }} {{ asn_local }} additive  
 #  
-route-policy C{{ circuito }}-EXPORT permit node 2014  
+route-policy C{{ circuito }}-{{ customer_name }-EXPORT permit node 2014  
  if-match community-filter EXPORT-ALL-CDN-P4  
  apply as-path {{ asn_local }} {{ asn_local }} {{ asn_local }} additive  
 #  
-route-policy C{{ circuito }}-EXPORT permit node 2015  
+route-policy C{{ circuito }}-{{ customer_name }-EXPORT permit node 2015  
  if-match community-filter EXPORT-ALL-CDN-P5  
  apply as-path {{ asn_local }} {{ asn_local }} {{ asn_local }} {{ asn_local }} additive  
 #  
-route-policy C{{ circuito }}-EXPORT deny node 9999  
+route-policy C{{ circuito }}-{{ customer_name }-EXPORT deny node 9999  
 #  
-route-policy C{{ circuito }}-IMPORT-IPV4 permit node 10  
+route-policy C{{ circuito }}-{{ customer_name }-IMPORT-IPV4 permit node 10  
 apply community 64777:10094  
-route-policy C{{ circuito }}-IMPORT-IPV6 deny node 9999  
+route-policy C{{ circuito }}-{{ customer_name }-IMPORT-IPV6 deny node 9999  
 #  
 commit  
 #
@@ -762,19 +762,20 @@ bgp  {{ asn_local }}
 
 ipv4-family unicast  
  peer {{ peer_remoto_v4 }} enable  
- peer {{ peer_remoto_v4 }} route-policy C{{ circuito }}-IMPORT-IPV4 import  
- peer {{ peer_remoto_v4 }} route-policy C{{ circuito }}-EXPORT export  
+ peer {{ peer_remoto_v4 }} route-policy C{{ circuito }}-{{ customer_name }-IMPORT-IPV4 import  
+ peer {{ peer_remoto_v4 }} route-policy C{{ circuito }}-{{ customer_name }-EXPORT export  
    
    
 ipv6-family unicast  
 peer {{ peer_remoto_v6 }} enable  
 y  
 peer {{ peer_remoto_v6 }} public-as-only force  
-peer {{ peer_remoto_v6 }} route-policy C{{ circuito }}-IMPORT-IPV6 import  
-peer {{ peer_remoto_v6 }} route-policy C{{ circuito }}-EXPORT export  
+peer {{ peer_remoto_v6 }} route-policy C{{ circuito }}-{{ customer_name }-IMPORT-IPV6 import  
+peer {{ peer_remoto_v6 }} route-policy C{{ circuito }}-{{ customer_name }-EXPORT export  
 peer {{ peer_remoto_v6 }} next-hop-local  
 peer {{ peer_remoto_v6 }} advertise-community  
 peer {{ peer_remoto_v6 }} advertise-ext-community
+
 
 commit  
 run save  
