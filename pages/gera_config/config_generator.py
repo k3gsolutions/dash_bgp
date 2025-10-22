@@ -184,9 +184,21 @@ def render():
                 st.error(f"❌ Template não encontrado para o serviço '{service_value}'")
                 return
             
+            # Preparar dados para o template
+            template_data = config_data.copy()
+            
+            # Para L2VPN VLAN, buscar nome do dispositivo
+            if service_value == "l2vpn-vlan":
+                try:
+                    device = netbox.get_device_by_id(config_data["selected_device"])
+                    template_data["device_name"] = device["name"]
+                except Exception as e:
+                    st.warning(f"⚠️ Não foi possível buscar o nome do dispositivo: {str(e)}")
+                    template_data["device_name"] = f"Device-{config_data['selected_device']}"
+            
             # Renderizar template
             with st.spinner("Gerando configuração..."):
-                config_output = template_service.render_template(template_path, **config_data)
+                config_output = template_service.render_template(template_path, **template_data)
             
             # Exibir resultado
             st.success("✅ Configuração gerada com sucesso!")

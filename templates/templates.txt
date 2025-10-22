@@ -4,18 +4,16 @@ template/l2vpn/vlan
 # Device {{ device_name }}
 # Cliente {{ customer_name }}
 #
-vlan {{ vlan_id_a }}
+vlan {{ vlan_id }}
  description {{ customer_name }}
 #
 {% for interface in interfaces %}
 interface {{ interface.name }}
-    {% if interface.untag %}
-    port hybrid untagged vlan {{ vlan_id_a }}
-    port hybrid pvid vlan {{ vlan_id_a }}
-    {% else %}
-    port hybrid tagged vlan {{ vlan_id_a }}
-    {% endif %}
+    port hybrid tagged vlan {{ vlan_id }}
 {% endfor %}
+
+
+
 ---
 template/l2vpn/ptp
 # Cliente {{ customer_name }}
@@ -24,17 +22,17 @@ template/l2vpn/ptp
 # Device {{ device_name_a }}
 description {{ customer_name }}
 #
-vlan {{ vlan_id_a }}
+vlan {{ vlan_id }}
 description {{ customer_name }}
 interface {{ interface_a.name }}
     {% if interface_a.untag %}
-    port hybrid untagged vlan {{ vlan_id_a }}
-    port hybrid pvid vlan {{ vlan_id_a }}
+    port hybrid untagged vlan {{ vlan_id }}
+    port hybrid pvid vlan {{ vlan_id }}
     {% else %}
-    port hybrid tagged vlan {{ vlan_id_a }}
+    port hybrid tagged vlan {{ vlan_id }}
     {% endif %}
-interface vlanif {{ vlan_id_a }}    
-mpls l2vc 10.200.1.1 {{ vlan_id_a }} mtu 2000
+interface vlanif {{ vlan_id }}    
+mpls l2vc 10.200.1.1 {{ vlan_id }} mtu 2000
 statistic enable both
 #
 #
@@ -108,15 +106,15 @@ template/l3vpn/cl_ded
 ### 01 - Versao Switch
 ##################
 # Configuracao do Device {{ device_name_a }}
-vlan {{ vlan_id_a }}
+vlan {{ vlan_id }}
 description {{ customer_name }}
 
-interface vlanif {{ vlan_id_a }}
+interface vlanif {{ vlan_id }}
 description {{ customer_name }}
 ip address {{ peer_local_v4 }} {{ peer_local_mask_v4 }}
 
 interface {{ selected_interface_a }}
-port hybrid tagged vlan {{ vlan_id_a }}
+port hybrid tagged vlan {{ vlan_id }}
 ipv6 enable
 ipv6 address {{ peer_local_v6 }} {{ peer_local_mask_v6}}
 statistic enable
@@ -130,8 +128,8 @@ quit
 ### 02 - Versao Router
 ##################
 # Configuracao do Device {{ device_name_a }}
-interface {{selected_interface_a}}.{{ vlan_id_a }}
-vlan-type dot1q {{vlan_id_a}}
+interface {{selected_interface_a}}.{{ vlan_id }}
+vlan-type dot1q {{vlan_id}}
 description {{ customer_name }}
 ip address {{ peer_local_v4 }} {{ peer_local_mask_v4 }}
 ipv6 enable
@@ -160,15 +158,15 @@ template/l3vpn/cl_trans_ip
 ### 01 - Versao Switch
 ##################
 # Configuracao do Device {{ device_name_a }}
-vlan {{ vlan_id_a }}
+vlan {{ vlan_id }}
 description {{ customer_name }}
 
-interface vlanif {{ vlan_id_a }}
+interface vlanif {{ vlan_id }}
 description {{ customer_name }}
 ip address {{ peer_local_v4 }} {{ peer_local_mask_v4 }}
 
 interface {{ selected_interface_a }}
-port hybrid tagged vlan {{ vlan_id_a }}
+port hybrid tagged vlan {{ vlan_id }}
 ipv6 enable
 ipv6 address {{ peer_local_v6 }} {{ peer_local_mask_v6}}
 statistic enable
@@ -177,8 +175,8 @@ statistic enable
 ### 02 - Versao Router
 ##################
 # Configuracao do Device {{ device_name_a }}
-interface {{selected_interface_a}}.{{ vlan_id_a }}
-vlan-type dot1q {{vlan_id_a}}
+interface {{selected_interface_a}}.{{ vlan_id }}
+vlan-type dot1q {{vlan_id}}
 description {{ customer_name }}
 ip address {{ peer_local_v4 }} {{ peer_local_mask_v4 }}
 ipv6 enable
@@ -231,15 +229,15 @@ template/l3vpn/bgp_ups
 ### 01 - Versao Switch
 ##################
 # Configuracao do Device {{ device_name_a }}
-vlan {{ vlan_id_a }}
+vlan {{ vlan_id }}
 description {{ customer_name }}
 
-interface vlanif {{ vlan_id_a }}
+interface vlanif {{ vlan_id }}
 description {{ customer_name }}
 ip address {{ peer_local_v4 }} {{ peer_local_mask_v4 }}
 
 interface {{ selected_interface_a }}
-port hybrid tagged vlan {{ vlan_id_a }}
+port hybrid tagged vlan {{ vlan_id }}
 ipv6 enable
 ipv6 address {{ peer_local_v6 }} {{ peer_local_mask_v6}}
 statistic enable
@@ -248,8 +246,8 @@ statistic enable
 ### 02 - Versao Router
 ##################
 # Configuracao do Device {{ device_name_a }}
-interface {{selected_interface_a}}.{{ vlan_id_a }}
-vlan-type dot1q {{vlan_id_a}}
+interface {{selected_interface_a}}.{{ vlan_id }}
+vlan-type dot1q {{vlan_id}}
 description {{ customer_name }}
 ip address {{ peer_local_v4 }} {{ peer_local_mask_v4 }}
 ipv6 enable
@@ -314,15 +312,20 @@ template/l3vpn/bgp_ups_comm
 ### 01 - Versao Switch
 ##################
 # Configuracao do Device {{ device_name_a }}
-vlan {{ vlan_id_a }}
+vlan {{ vlan_id }}
 description {{ customer_name }}
 
-interface vlanif {{ vlan_id_a }}
+interface vlanif {{ vlan_id }}
 description {{ customer_name }}
-ip address {{ peer_local_v4 }} {{ peer_local_mask_v4 }}
+ip address {{ local_ip_v4 }} 255.255.255.252
+ipv6 enable
+ipv6 address {{ local_ip_v6 }}/64
 
-interface {{ selected_interface_a }}
-port hybrid tagged vlan {{ vlan_id_a }}
+interface {{ selected_interface }}
+port hybrid tagged vlan {{ vlan_id }}
+ipv6 enable
+statistic enable
+port hybrid tagged vlan {{ vlan_id }}
 ipv6 enable
 ipv6 address {{ peer_local_v6 }} {{ peer_local_mask_v6}}
 statistic enable
@@ -331,8 +334,8 @@ statistic enable
 ### 02 - Versao Router
 ##################
 # Configuracao do Device {{ device_name_a }}
-interface {{selected_interface_a}}.{{ vlan_id_a }}
-vlan-type dot1q {{vlan_id_a}}
+interface {{selected_interface_a}}.{{ vlan_id }}
+vlan-type dot1q {{vlan_id}}
 description {{ customer_name }}
 ip address {{ peer_local_v4 }} {{ peer_local_mask_v4 }}
 ipv6 enable
@@ -652,29 +655,29 @@ template/l3vpn/peering_cdn_comm
 ### 01 - Versao Switch
 ##################
 # Configuracao do Device {{ device_name_a }}
-vlan {{ vlan_id_a }}
+vlan {{ vlan_id }}
 description {{ customer_name }}
 
-interface vlanif {{ vlan_id_a }}
+interface vlanif {{ vlan_id }}
 description {{ customer_name }}
-ip address {{ peer_local_v4 }} {{ peer_local_mask_v4 }}
+ip address {{ local_ip_v4 }} 255.255.255.252
 
-interface {{ selected_interface_a }}
-port hybrid tagged vlan {{ vlan_id_a }}
+interface {{ selected_interface }}
+port hybrid tagged vlan {{ vlan_id }}
 ipv6 enable
-ipv6 address {{ peer_local_v6 }} {{ peer_local_mask_v6}}
+ipv6 address {{ local_ip_v6 }}/64
 statistic enable
 
 ##################
 ### 02 - Versao Router
 ##################
 # Configuracao do Device {{ device_name_a }}
-interface {{selected_interface_a}}.{{ vlan_id_a }}
-vlan-type dot1q {{vlan_id_a}}
+interface {{selected_interface}}.{{ vlan_id }}
+vlan-type dot1q {{vlan_id}}
 description {{ customer_name }}
-ip address {{ peer_local_v4 }} {{ peer_local_mask_v4 }}
+ip address {{ local_ip_v4 }} 255.255.255.252
 ipv6 enable
-ipv6 address {{ peer_local_v6 }} {{ peer_local_mask_v6}}
+ipv6 address {{ peer_local_v6 }}/64
 statistic enable
 
 ## DEPENDENCIAS**
@@ -750,12 +753,12 @@ commit
 
 **CRIAR PEERING BGP**
 
-bgp  {{ asn_local }}  
- peer {{ peer_remoto_v4 }} as-number {{ asn_remoto }}  
- peer {{ peer_remoto_v4 }} connect-interface {{ peer_local_v4 }}    
- peer {{ peer_remoto_v6 }} as-number {{ asn_remoto }}  
- peer {{ peer_remoto_v6 }} description C{{ circuito }}-{{ asn_name }}  
- peer {{ peer_remoto_v6 }} connect-interface {{ peer_local_v6 }}
+bgp  {{ asn_local }}  
+ peer {{ peer_ip_v4 }} as-number {{ asn_remoto }}  
+ peer {{ peer_ip_v4 }} connect-interface vlanif {{ vlan_id }}    
+ peer {{ peer_ip_v6 }} as-number {{ asn_remoto }}  
+ peer {{ peer_ip_v6 }} description C{{ circuito }}-{{ asn_name }}  
+ peer {{ peer_ip_v6 }} connect-interface vlanif {{ vlan_id }}
 
 ipv4-family unicast  
  peer {{ peer_remoto_v4 }} enable  
@@ -808,15 +811,15 @@ template/l3vpn/bgp_ixbr_comm
 ### 01 - Versao Switch
 ##################
 # Configuracao do Device {{ device_name_a }}
-vlan {{ vlan_id_a }}
+vlan {{ vlan_id }}
 description {{ customer_name }}
 
-interface vlanif {{ vlan_id_a }}
+interface vlanif {{ vlan_id }}
 description {{ customer_name }}
 ip address {{ peer_local_v4 }} {{ peer_local_mask_v4 }}
 
 interface {{ selected_interface_a }}
-port hybrid tagged vlan {{ vlan_id_a }}
+port hybrid tagged vlan {{ vlan_id }}
 ipv6 enable
 ipv6 address {{ peer_local_v6 }} {{ peer_local_mask_v6}}
 statistic enable
@@ -825,8 +828,8 @@ statistic enable
 ### 02 - Versao Router
 ##################
 # Configuracao do Device {{ device_name_a }}
-interface {{selected_interface_a}}.{{ vlan_id_a }}
-vlan-type dot1q {{vlan_id_a}}
+interface {{selected_interface_a}}.{{ vlan_id }}
+vlan-type dot1q {{vlan_id}}
 description {{ customer_name }}
 ip address {{ peer_local_v4 }} {{ peer_local_mask_v4 }}
 ipv6 enable

@@ -107,8 +107,17 @@ class ConfigForms:
         
         return info_local, info_remoto
 
-    def _render_device_selection(self, tenant_sites: List[Dict], key_suffix: str = "") -> Optional[Tuple[int, int, int]]:
-        """Renderiza seleção de dispositivo comum"""
+    def _render_device_selection(self, tenant_sites: List[Dict], key_suffix: str = "", allow_multiple_interfaces: bool = False) -> Optional[Tuple[int, int, List[int]]]:
+        """Renderiza seleção de dispositivo comum
+        
+        Args:
+            tenant_sites: Lista de sites do tenant
+            key_suffix: Sufixo para chaves únicas dos componentes
+            allow_multiple_interfaces: Se True, permite seleção múltipla de interfaces
+            
+        Returns:
+            Tupla com (device_id, vlan_id, lista_de_interfaces) ou None se inválido
+        """
         st.markdown("### 🖥️ Seleção de Dispositivo")
         
         site_dict = {site["id"]: site["name"] for site in tenant_sites}
@@ -150,15 +159,35 @@ class ConfigForms:
             interfaces = self.netbox.get_device_interfaces(selected_device)
             
             if interfaces:
-                interface_dict = {iface["id"]: iface["name"] for iface in interfaces}
-                selected_interface = st.selectbox(
-                    "Interface *",
-                    options=list(interface_dict.keys()),
-                    format_func=lambda iid: interface_dict[iid],
-                    key=f"selected_interface{key_suffix}"
-                )
+                # Filtrar apenas interfaces ativas
+                active_interfaces = [iface for iface in interfaces if iface.get("enabled", True)]
+                interface_dict = {iface["id"]: iface["name"] for iface in active_interfaces}
                 
-                return selected_device, vlan_id, selected_interface
+                if allow_multiple_interfaces:
+                    selected_interfaces = st.multiselect(
+                        "Interfaces *",
+                        options=list(interface_dict.keys()),
+                        format_func=lambda iid: interface_dict[iid],
+                        key=f"selected_interfaces{key_suffix}",
+                        help="Selecione uma ou mais interfaces para aplicar a VLAN"
+                    )
+                    
+                    if selected_interfaces:
+                        # Retornar apenas interfaces selecionadas com seus dados completos
+                        selected_interface_data = [iface for iface in active_interfaces if iface["id"] in selected_interfaces]
+                        return selected_device, vlan_id, selected_interfaces
+                else:
+                    selected_interface = st.selectbox(
+                        "Interface *",
+                        options=list(interface_dict.keys()),
+                        format_func=lambda iid: interface_dict[iid],
+                        key=f"selected_interface{key_suffix}"
+                    )
+                    
+                    if selected_interface:
+                        # Retornar interface selecionada com seus dados completos
+                        selected_interface_data = next((iface for iface in active_interfaces if iface["id"] == selected_interface), None)
+                        return selected_device, vlan_id, [selected_interface]
         
         return None
 
@@ -223,7 +252,7 @@ class ConfigForms:
         with col1:
             asn_local = st.text_input(
                 "ASN Local *",
-                placeholder="AS64512",
+                placeholder="64512",
                 help="ASN do seu roteador",
                 key=f"asn_local_{service_type}"
             )
@@ -231,7 +260,7 @@ class ConfigForms:
         with col2:
             asn_remoto = st.text_input(
                 "ASN Remoto *", 
-                placeholder="AS64513",
+                placeholder="64513",
                 help="ASN do peer remoto",
                 key=f"asn_remoto_{service_type}"
             )
@@ -357,62 +386,75 @@ class ConfigForms:
 
     def render_l2vpn_vlan_form(self, tenant_sites: List[Dict]) -> Optional[Dict[str, Any]]:
         """Formulário para L2VPN VLAN"""
-        st.markdown("## 🔧 Configuração L2VPN - VLAN")
+        st.markdown("### 🔧 Configuração L2VPN - VLAN")
         st.markdown("---")
         
-        # Nome do cliente e ID do circuito
-        col1, col2 = st.columns([1, 3])
-        with col1:
-            circuito = st.text_input(
-                "ID *",
-                placeholder="03",
-                help="Número inteiro de dois dígitos (Ex: 03)",
-                key="circuito_id"
-            )
-        with col2:
-            customer_name = st.text_input(
-                "Nome do Cliente *",
-                placeholder="CL-FULANO_DE_TAL ou AS1234-FULANO_DE_TAL",
-                help="Nome deve começar com CL- ou AS"
-            )
+        customer_name = st.text_input(
+            "Nome do Cliente *",
+            placeholder="CL-FULANO_DE_TAL ou AS1234-FULANO_DE_TAL",
+            help="Nome deve começar com CL- ou AS"
+        )
         
         if not self._validate_customer_name(customer_name):
             st.warning("⚠️ Nome do cliente deve começar com 'CL-' ou 'AS'")
             return None
             
-        # Seleção de dispositivo
-        device_selection = self._render_device_selection(tenant_sites)
+        # Seleção de dispositivo com múltiplas interfaces
+        device_selection = self._render_device_selection(tenant_sites, allow_multiple_interfaces=True)
         if not device_selection:
             return None
         
-        selected_device, vlan_id, selected_interface = device_selection
+        selected_device, vlan_id, selected_interfaces = device_selection
         
-        # Circuito (obrigatório - ID)
-        circuito = st.text_input(
-            "ID *",
-            placeholder="Ex: 03",
-            help="Número de identificação do circuito (até 2 dígitos)"
-        )
-        
-        # Validação do campo ID (circuito)
-        if not circuito:
-            st.warning("⚠️ O campo ID é obrigatório")
-            return None
-            
-        is_valid_circuito = circuito.isdigit() and len(circuito) <= 2
-        if not is_valid_circuito:
-            st.warning("⚠️ O campo ID deve ser um número inteiro de até dois dígitos (Ex: 03)")
+        # Validar se pelo menos uma interface foi selecionada
+        if not selected_interfaces:
+            st.warning("⚠️ Selecione pelo menos uma interface")
             return None
         
         # Botão para gerar configuração
         if st.button("🎯 Gerar Configuração L2VPN VLAN", type="primary"):
+            # Buscar informações do dispositivo
+            device_name = None
+            try:
+                device_info = self.netbox.get_device_by_id(selected_device)
+                if device_info:
+                    device_name = device_info.get("name")
+            except Exception as e:
+                st.error(f"Erro ao buscar informações do dispositivo: {str(e)}")
+                return None
+            
+            # Buscar nomes das interfaces selecionadas
+            interfaces = []
+            try:
+                device_interfaces = self.netbox.get_device_interfaces(selected_device)
+                interface_dict = {iface["id"]: iface for iface in device_interfaces}
+                
+                for interface_id in selected_interfaces:
+                    if interface_id in interface_dict:
+                        interface_info = interface_dict[interface_id]
+                        if interface_info.get("enabled", True):  # Apenas interfaces ativas
+                            interfaces.append({
+                                "id": interface_id,
+                                "name": interface_info["name"],
+                                "type": interface_info.get("type", ""),
+                                "enabled": True
+                            })
+            except Exception as e:
+                st.error(f"Erro ao buscar informações das interfaces: {str(e)}")
+                return None
+            
+            # Validar se ainda temos interfaces válidas após a filtragem
+            if not interfaces:
+                st.error("⚠️ Nenhuma interface válida selecionada")
+                return None
+            
             return {
                 "service_type": "l2vpn_vlan",
                 "customer_name": customer_name,
+                "device_name": device_name,  # Nome do dispositivo para o template
                 "selected_device": selected_device,
                 "vlan_id": vlan_id,
-                "selected_interface": selected_interface,
-                "circuito": circuito
+                "interfaces": interfaces  # Lista de interfaces com suas informações
             }
         
         return None
