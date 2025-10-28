@@ -8,7 +8,7 @@ from pages import home
 from pages.cadastro import clientes, sites, dispositivos, circuitos
 from pages.consulta import cliente, dispositivo
 from pages.gera_config import config_generator
-from pages.tools import ping, traceroute, whois, looking_glass, ipcalc
+from pages.tools import config_analyzer, ping, traceroute, whois, looking_glass, ipcalc
 
 # Configuração da página
 st.set_page_config(
@@ -73,6 +73,7 @@ def main():
     router.register('tools.whois', whois.render)
     router.register('tools.looking_glass', looking_glass.render)
     router.register('tools.ipcalc', ipcalc.render)
+    router.register('tools.config_analyzer', config_analyzer.render)
     
     # Renderizar sidebar
     sidebar = Sidebar()

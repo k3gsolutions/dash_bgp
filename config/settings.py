@@ -82,6 +82,7 @@ class AppConfig:
                 MenuItem(id="tool_looking_glass", label="Looking Glass", icon="🔭", page="tools.looking_glass"),
                 MenuItem(id="tool_ping", label="Ping", icon="📡", page="tools.ping"),
                 MenuItem(id="tool_ipcalc", label="IP Calculator", icon="🔢", page="tools.ipcalc"),
+                MenuItem(id="tool_config_analyzer", label="Analisador de Config", icon="📝", page="tools.config_analyzer"),
             ]
         ),
     ]
