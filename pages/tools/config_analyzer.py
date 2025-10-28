@@ -782,3 +782,561 @@ def render():
     
     else:
         st.info("👆 Selecione pelo menos um tipo de análise acima")
+    
+    st.markdown("### 🔗 Circuitos / Contextos L2VPN")
+    # Lógica unificada: sempre usa analyze_vlan_contexts()
+    vlan_rows = analyzer.analyze_vlan_contexts()
+    if vlan_rows:
+        df_vlans = pd.DataFrame(
+            vlan_rows,
+            columns=['Vlan', 'Descrição', 'Acessos', 'IP', 'MASK4', 'IPv6', 'MASK6', 'L2VC', 'NEIGHBOR', 'VPLS-ID', 'MTU', 'RAW']
+        )
+        st.dataframe(df_vlans, use_container_width=True)
+    
+        # Download CSV unificado (inclui vendor no nome)
+        vendor_name = analyzer.vendor or 'unknown'
+        csv_header = 'Vlan,Descrição,Acessos,IP,MASK4,IPv6,MASK6,L2VC,NEIGHBOR,VPLS-ID,MTU,RAW\n'
+        csv_data = csv_header + '\n'.join([
+            ','.join([
+                str(row.get('Vlan', '')),
+                str(row.get('Descrição', '')) if row.get('Descrição') else '',
+                str(row.get('Acessos', '')) if row.get('Acessos') else '',
+                str(row.get('IP', '')) if row.get('IP') else '',
+                str(row.get('MASK4', '')) if row.get('MASK4') else '',
+                str(row.get('IPv6', '')) if row.get('IPv6') else '',
+                str(row.get('MASK6', '')) if row.get('MASK6') else '',
+                str(row.get('L2VC', 'não')),
+                str(row.get('NEIGHBOR', '')) if row.get('NEIGHBOR') else '',
+                str(row.get('VPLS-ID', '')) if row.get('VPLS-ID') is not None else '',
+                str(row.get('MTU', 1500)),
+                str(row.get('RAW', 'não'))
+            ])
+            for row in vlan_rows
+        ])
+        st.download_button(
+            label="📥 Download CSV - VLAN Contextos",
+            data=csv_data,
+            file_name=f"vlan_contexts_{vendor_name}_{uploaded_file.name}.csv",
+            mime="text/csv"
+        )
+    else:
+        st.warning("⚠️ Nenhum contexto de VLAN/L2VPN encontrado")
+    
+    st.markdown("### 🔗 Circuitos / Contextos L2VPN")
+    # Lógica unificada: sempre usa analyze_vlan_contexts()
+    vlan_rows = analyzer.analyze_vlan_contexts()
+    if vlan_rows:
+        df_vlans = pd.DataFrame(
+            vlan_rows,
+            columns=['Vlan', 'Descrição', 'Acessos', 'IP', 'MASK4', 'IPv6', 'MASK6', 'L2VC', 'NEIGHBOR', 'VPLS-ID', 'MTU', 'RAW']
+        )
+        st.dataframe(df_vlans, use_container_width=True)
+    
+        # Download CSV unificado (inclui vendor no nome)
+        vendor_name = analyzer.vendor or 'unknown'
+        csv_header = 'Vlan,Descrição,Acessos,IP,MASK4,IPv6,MASK6,L2VC,NEIGHBOR,VPLS-ID,MTU,RAW\n'
+        csv_data = csv_header + '\n'.join([
+            ','.join([
+                str(row.get('Vlan', '')),
+                str(row.get('Descrição', '')) if row.get('Descrição') else '',
+                str(row.get('Acessos', '')) if row.get('Acessos') else '',
+                str(row.get('IP', '')) if row.get('IP') else '',
+                str(row.get('MASK4', '')) if row.get('MASK4') else '',
+                str(row.get('IPv6', '')) if row.get('IPv6') else '',
+                str(row.get('MASK6', '')) if row.get('MASK6') else '',
+                str(row.get('L2VC', 'não')),
+                str(row.get('NEIGHBOR', '')) if row.get('NEIGHBOR') else '',
+                str(row.get('VPLS-ID', '')) if row.get('VPLS-ID') is not None else '',
+                str(row.get('MTU', 1500)),
+                str(row.get('RAW', 'não'))
+            ])
+            for row in vlan_rows
+        ])
+        st.download_button(
+            label="📥 Download CSV - VLAN Contextos",
+            data=csv_data,
+            file_name=f"vlan_contexts_{vendor_name}_{uploaded_file.name}.csv",
+            mime="text/csv"
+        )
+    else:
+        st.warning("⚠️ Nenhum contexto de VLAN/L2VPN encontrado")
+
+
+def analyze_vlan_contexts_huawei(self) -> List[Dict[str, Any]]:
+    vlan_descriptions: Dict[int, str] = {}
+    vlan_accesses: Dict[int, set] = {}
+    vlan_vlanif_info: Dict[int, Dict[str, Any]] = {}
+    present_vlans: set = set()
+
+    current_interface: Optional[str] = None
+    in_vlan_block = False
+    current_vlan_id: Optional[int] = None
+
+    for raw_line in self.config_lines:
+        line = raw_line.strip()
+
+        if line.startswith('vlan '):
+            parts = line.split()
+            if len(parts) >= 2 and parts[1].isdigit():
+                current_vlan_id = int(parts[1])
+                present_vlans.add(current_vlan_id)
+                in_vlan_block = True
+                continue
+
+        if in_vlan_block:
+            if line.lower().startswith('name '):
+                desc = line.split('name ', 1)[1].strip()
+                if current_vlan_id is not None:
+                    vlan_descriptions[current_vlan_id] = desc
+            if line == '!' or line.startswith('vlan '):
+                in_vlan_block = False
+                current_vlan_id = None
+
+        if line.startswith('interface '):
+            current_interface = line.split('interface ', 1)[1].strip()
+            if current_interface.lower().startswith('vlan'):
+                try:
+                    vid = int(''.join(filter(str.isdigit, current_interface)))
+                except ValueError:
+                    vid = None
+                if vid is not None:
+                    present_vlans.add(vid)
+                    vlan_vlanif_info.setdefault(vid, {
+                        'ip': None, 'mask4': None,
+                        'ipv6': None, 'mask6': None,
+                        'l2vc': False, 'neighbor': None,
+                        'vpls_id': None, 'mtu': 1500, 'raw': False
+                    })
+                continue
+
+        if current_interface:
+            if 'switchport access vlan ' in line.lower():
+                try:
+                    vlan_id = int(line.split()[-1])
+                    present_vlans.add(vlan_id)
+                    vlan_accesses.setdefault(vlan_id, set()).add(current_interface)
+                except ValueError:
+                    pass
+
+            if line.startswith('ip address '):
+                try:
+                    vid = int(''.join(filter(str.isdigit, current_interface)))
+                except ValueError:
+                    vid = None
+                if vid is not None:
+                    parts = line.split()
+                    if len(parts) >= 4:
+                        info = vlan_vlanif_info.setdefault(vid, {
+                            'ip': None, 'mask4': None,
+                            'ipv6': None, 'mask6': None,
+                            'l2vc': False, 'neighbor': None,
+                            'vpls_id': None, 'mtu': 1500, 'raw': False
+                        })
+                        info['ip'] = parts[2]
+                        info['mask4'] = parts[3]
+
+            if line.lower().startswith('ipv6 address '):
+                try:
+                    vid = int(''.join(filter(str.isdigit, current_interface)))
+                except ValueError:
+                    vid = None
+                if vid is not None:
+                    addr = line.split('ipv6 address ', 1)[1].strip()
+                    if '/' in addr:
+                        ip6, pfx = addr.split('/', 1)
+                        info = vlan_vlanif_info.setdefault(vid, {
+                            'ip': None, 'mask4': None,
+                            'ipv6': None, 'mask6': None,
+                            'l2vc': False, 'neighbor': None,
+                            'vpls_id': None, 'mtu': 1500, 'raw': False
+                        })
+                        info['ipv6'] = ip6
+                        info['mask6'] = pfx
+
+        if 'xconnect' in line.lower():
+            parts = line.split()
+            neighbor = None
+            vc_id = None
+            mtu = None
+            raw = (' raw' in line.lower()) or line.lower().endswith('raw')
+
+            for i, t in enumerate(parts):
+                if t.lower() == 'xconnect' and i + 1 < len(parts):
+                    neighbor = parts[i + 1]
+                    for j in range(i + 2, min(i + 6, len(parts))):
+                        if parts[j].isdigit():
+                            vc_id = int(parts[j])
+                            break
+                        for j in range(i + 2, len(parts)):
+                            if parts[j].lower() == 'mtu' and j + 1 < len(parts) and parts[j + 1].isdigit():
+                                mtu = int(parts[j + 1])
+                                break
+                            break
+
+            if current_interface and current_interface.lower().startswith('vlan'):
+                try:
+                    vid = int(''.join(filter(str.isdigit, current_interface)))
+                except ValueError:
+                    vid = None
+                if vid is not None:
+                    info = vlan_vlanif_info.setdefault(vid, {
+                        'ip': None, 'mask4': None,
+                        'ipv6': None, 'mask6': None,
+                        'l2vc': False, 'neighbor': None,
+                        'vpls_id': None, 'mtu': 1500, 'raw': False
+                    })
+                    info['l2vc'] = True
+                    info['neighbor'] = neighbor
+                    info['vpls_id'] = vc_id
+                    if mtu:
+                        info['mtu'] = mtu
+                    info['raw'] = raw
+
+    all_vlans = sorted(set(present_vlans) |
+                       set(vlan_descriptions.keys()) |
+                       set(vlan_accesses.keys()) |
+                       set(vlan_vlanif_info.keys()))
+
+    rows: List[Dict[str, Any]] = []
+    for vid in all_vlans:
+        info = vlan_vlanif_info.get(vid, {})
+        accesses = sorted(list(vlan_accesses.get(vid, set())))
+        rows.append({
+            'Vlan': vid,
+            'Descrição': vlan_descriptions.get(vid, None),
+            'Acessos': ', '.join(accesses) if accesses else None,
+            'IP': info.get('ip'),
+            'MASK4': info.get('mask4'),
+            'IPv6': info.get('ipv6'),
+            'MASK6': info.get('mask6'),
+            'L2VC': 'sim' if info.get('l2vc') else 'não',
+            'NEIGHBOR': info.get('neighbor'),
+            'VPLS-ID': info.get('vpls_id'),
+            'MTU': info.get('mtu', 1500),
+            'RAW': 'sim' if info.get('raw') else 'não'
+        })
+    return rows
+
+
+def analyze_vlan_contexts_cisco(self) -> List[Dict[str, Any]]:
+    vlan_descriptions: Dict[int, str] = {}
+    vlan_accesses: Dict[int, set] = {}
+    vlan_vlanif_info: Dict[int, Dict[str, Any]] = {}
+    present_vlans: set = set()
+
+    current_interface: Optional[str] = None
+    in_vlan_block = False
+    current_vlan_id: Optional[int] = None
+
+    for raw_line in self.config_lines:
+        line = raw_line.strip()
+
+        if line.startswith('vlan '):
+            parts = line.split()
+            if len(parts) >= 2 and parts[1].isdigit():
+                current_vlan_id = int(parts[1])
+                present_vlans.add(current_vlan_id)
+                in_vlan_block = True
+                continue
+
+        if in_vlan_block:
+            if line.lower().startswith('name '):
+                desc = line.split('name ', 1)[1].strip()
+                if current_vlan_id is not None:
+                    vlan_descriptions[current_vlan_id] = desc
+            if line == '!' or line.startswith('vlan '):
+                in_vlan_block = False
+                current_vlan_id = None
+
+        if line.startswith('interface '):
+            current_interface = line.split('interface ', 1)[1].strip()
+            if current_interface.lower().startswith('vlan'):
+                try:
+                    vid = int(''.join(filter(str.isdigit, current_interface)))
+                except ValueError:
+                    vid = None
+                if vid is not None:
+                    present_vlans.add(vid)
+                    vlan_vlanif_info.setdefault(vid, {
+                        'ip': None, 'mask4': None,
+                        'ipv6': None, 'mask6': None,
+                        'l2vc': False, 'neighbor': None,
+                        'vpls_id': None, 'mtu': 1500, 'raw': False
+                    })
+                continue
+
+        if current_interface:
+            if 'switchport access vlan ' in line.lower():
+                try:
+                    vlan_id = int(line.split()[-1])
+                    present_vlans.add(vlan_id)
+                    vlan_accesses.setdefault(vlan_id, set()).add(current_interface)
+                except ValueError:
+                    pass
+
+            if line.startswith('ip address '):
+                try:
+                    vid = int(''.join(filter(str.isdigit, current_interface)))
+                except ValueError:
+                    vid = None
+                if vid is not None:
+                    parts = line.split()
+                    if len(parts) >= 4:
+                        info = vlan_vlanif_info.setdefault(vid, {
+                            'ip': None, 'mask4': None,
+                            'ipv6': None, 'mask6': None,
+                            'l2vc': False, 'neighbor': None,
+                            'vpls_id': None, 'mtu': 1500, 'raw': False
+                        })
+                        info['ip'] = parts[2]
+                        info['mask4'] = parts[3]
+
+            if line.lower().startswith('ipv6 address '):
+                try:
+                    vid = int(''.join(filter(str.isdigit, current_interface)))
+                except ValueError:
+                    vid = None
+                if vid is not None:
+                    addr = line.split('ipv6 address ', 1)[1].strip()
+                    if '/' in addr:
+                        ip6, pfx = addr.split('/', 1)
+                        info = vlan_vlanif_info.setdefault(vid, {
+                            'ip': None, 'mask4': None,
+                            'ipv6': None, 'mask6': None,
+                            'l2vc': False, 'neighbor': None,
+                            'vpls_id': None, 'mtu': 1500, 'raw': False
+                        })
+                        info['ipv6'] = ip6
+                        info['mask6'] = pfx
+
+        if 'xconnect' in line.lower():
+            parts = line.split()
+            neighbor = None
+            vc_id = None
+            mtu = None
+            raw = (' raw' in line.lower()) or line.lower().endswith('raw')
+
+            for i, t in enumerate(parts):
+                if t.lower() == 'xconnect' and i + 1 < len(parts):
+                    neighbor = parts[i + 1]
+                    for j in range(i + 2, min(i + 6, len(parts))):
+                        if parts[j].isdigit():
+                            vc_id = int(parts[j])
+                            break
+                        for j in range(i + 2, len(parts)):
+                            if parts[j].lower() == 'mtu' and j + 1 < len(parts) and parts[j + 1].isdigit():
+                                mtu = int(parts[j + 1])
+                                break
+                            break
+
+        if current_interface and current_interface.lower().startswith('vlan'):
+            try:
+                vid = int(''.join(filter(str.isdigit, current_interface)))
+            except ValueError:
+                vid = None
+            if vid is not None:
+                info = vlan_vlanif_info.setdefault(vid, {
+                    'ip': None, 'mask4': None,
+                    'ipv6': None, 'mask6': None,
+                    'l2vc': False, 'neighbor': None,
+                    'vpls_id': None, 'mtu': 1500, 'raw': False
+                })
+                info['l2vc'] = True
+                info['neighbor'] = neighbor
+                info['vpls_id'] = vc_id
+                if mtu:
+                    info['mtu'] = mtu
+                info['raw'] = raw
+
+    all_vlans = sorted(set(present_vlans) |
+                       set(vlan_descriptions.keys()) |
+                       set(vlan_accesses.keys()) |
+                       set(vlan_vlanif_info.keys()))
+
+    rows: List[Dict[str, Any]] = []
+    for vid in all_vlans:
+        info = vlan_vlanif_info.get(vid, {})
+        accesses = sorted(list(vlan_accesses.get(vid, set())))
+        rows.append({
+            'Vlan': vid,
+            'Descrição': vlan_descriptions.get(vid, None),
+            'Acessos': ', '.join(accesses) if accesses else None,
+            'IP': info.get('ip'),
+            'MASK4': info.get('mask4'),
+            'IPv6': info.get('ipv6'),
+            'MASK6': info.get('mask6'),
+            'L2VC': 'sim' if info.get('l2vc') else 'não',
+            'NEIGHBOR': info.get('neighbor'),
+            'VPLS-ID': info.get('vpls_id'),
+            'MTU': info.get('mtu', 1500),
+            'RAW': 'sim' if info.get('raw') else 'não'
+        })
+    return rows
+
+
+def analyze_vlan_contexts_mikrotik(self) -> List[Dict[str, Any]]:
+    vlan_descriptions: Dict[int, str] = {}
+    vlan_accesses: Dict[int, set] = {}
+    vlan_vlanif_info: Dict[int, Dict[str, Any]] = {}
+    present_vlans: set = set()
+
+    current_interface: Optional[str] = None
+    in_vlan_block = False
+    current_vlan_id: Optional[int] = None
+
+    for raw_line in self.config_lines:
+        line = raw_line.strip()
+
+        if line.startswith('vlan '):
+            parts = line.split()
+            if len(parts) >= 2 and parts[1].isdigit():
+                current_vlan_id = int(parts[1])
+                present_vlans.add(current_vlan_id)
+                in_vlan_block = True
+                continue
+
+        if in_vlan_block:
+            if line.lower().startswith('name '):
+                desc = line.split('name ', 1)[1].strip()
+                if current_vlan_id is not None:
+                    vlan_descriptions[current_vlan_id] = desc
+            if line == '!' or line.startswith('vlan '):
+                in_vlan_block = False
+                current_vlan_id = None
+
+        if line.startswith('interface '):
+            current_interface = line.split('interface ', 1)[1].strip()
+            if current_interface.lower().startswith('vlan'):
+                try:
+                    vid = int(''.join(filter(str.isdigit, current_interface)))
+                except ValueError:
+                    vid = None
+                if vid is not None:
+                    present_vlans.add(vid)
+                    vlan_vlanif_info.setdefault(vid, {
+                        'ip': None, 'mask4': None,
+                        'ipv6': None, 'mask6': None,
+                        'l2vc': False, 'neighbor': None,
+                        'vpls_id': None, 'mtu': 1500, 'raw': False
+                    })
+                continue
+
+        if current_interface:
+            if 'switchport access vlan ' in line.lower():
+                try:
+                    vlan_id = int(line.split()[-1])
+                    present_vlans.add(vlan_id)
+                    vlan_accesses.setdefault(vlan_id, set()).add(current_interface)
+                except ValueError:
+                    pass
+
+            if line.startswith('ip address '):
+                try:
+                    vid = int(''.join(filter(str.isdigit, current_interface)))
+                except ValueError:
+                    vid = None
+                if vid is not None:
+                    parts = line.split()
+                    if len(parts) >= 4:
+                        info = vlan_vlanif_info.setdefault(vid, {
+                            'ip': None, 'mask4': None,
+                            'ipv6': None, 'mask6': None,
+                            'l2vc': False, 'neighbor': None,
+                            'vpls_id': None, 'mtu': 1500, 'raw': False
+                        })
+                        info['ip'] = parts[2]
+                        info['mask4'] = parts[3]
+
+            if line.lower().startswith('ipv6 address '):
+                try:
+                    vid = int(''.join(filter(str.isdigit, current_interface)))
+                except ValueError:
+                    vid = None
+                if vid is not None:
+                    addr = line.split('ipv6 address ', 1)[1].strip()
+                    if '/' in addr:
+                        ip6, pfx = addr.split('/', 1)
+                        info = vlan_vlanif_info.setdefault(vid, {
+                            'ip': None, 'mask4': None,
+                            'ipv6': None, 'mask6': None,
+                            'l2vc': False, 'neighbor': None,
+                            'vpls_id': None, 'mtu': 1500, 'raw': False
+                        })
+                        info['ipv6'] = ip6
+                        info['mask6'] = pfx
+
+        if 'xconnect' in line.lower():
+            parts = line.split()
+            neighbor = None
+            vc_id = None
+            mtu = None
+            raw = (' raw' in line.lower()) or line.lower().endswith('raw')
+
+            for i, t in enumerate(parts):
+                if t.lower() == 'xconnect' and i + 1 < len(parts):
+                    neighbor = parts[i + 1]
+                    for j in range(i + 2, min(i + 6, len(parts))):
+                        if parts[j].isdigit():
+                            vc_id = int(parts[j])
+                            break
+                        for j in range(i + 2, len(parts)):
+                            if parts[j].lower() == 'mtu' and j + 1 < len(parts) and parts[j + 1].isdigit():
+                                mtu = int(parts[j + 1])
+                                break
+                            break
+
+        if current_interface and current_interface.lower().startswith('vlan'):
+            try:
+                vid = int(''.join(filter(str.isdigit, current_interface)))
+            except ValueError:
+                vid = None
+            if vid is not None:
+                info = vlan_vlanif_info.setdefault(vid, {
+                    'ip': None, 'mask4': None,
+                    'ipv6': None, 'mask6': None,
+                    'l2vc': False, 'neighbor': None,
+                    'vpls_id': None, 'mtu': 1500, 'raw': False
+                })
+                info['l2vc'] = True
+                info['neighbor'] = neighbor
+                info['vpls_id'] = vc_id
+                if mtu:
+                    info['mtu'] = mtu
+                info['raw'] = raw
+
+    all_vlans = sorted(set(present_vlans) |
+                       set(vlan_descriptions.keys()) |
+                       set(vlan_accesses.keys()) |
+                       set(vlan_vlanif_info.keys()))
+
+    rows: List[Dict[str, Any]] = []
+    for vid in all_vlans:
+        info = vlan_vlanif_info.get(vid, {})
+        accesses = sorted(list(vlan_accesses.get(vid, set())))
+        rows.append({
+            'Vlan': vid,
+            'Descrição': vlan_descriptions.get(vid, None),
+            'Acessos': ', '.join(accesses) if accesses else None,
+            'IP': info.get('ip'),
+            'MASK4': info.get('mask4'),
+            'IPv6': info.get('ipv6'),
+            'MASK6': info.get('mask6'),
+            'L2VC': 'sim' if info.get('l2vc') else 'não',
+            'NEIGHBOR': info.get('neighbor'),
+            'VPLS-ID': info.get('vpls_id'),
+            'MTU': info.get('mtu', 1500),
+            'RAW': 'sim' if info.get('raw') else 'não'
+        })
+    return rows
+
+
+def analyze_vlan_contexts(self) -> List[Dict[str, Any]]:
+    """Dispatcher para análise unificada de VLAN/L2VPN por vendor."""
+    if self.vendor == 'huawei':
+        return self.analyze_vlan_contexts_huawei()
+    elif self.vendor == 'cisco':
+        return self.analyze_vlan_contexts_cisco()
+    elif self.vendor == 'mikrotik':
+        return self.analyze_vlan_contexts_mikrotik()
+    else:
+        return []
