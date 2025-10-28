@@ -665,7 +665,7 @@ ip address {{ local_ip_v4 }} 255.255.255.252
 interface {{ selected_interface }}
 port hybrid tagged vlan {{ vlan_id }}
 ipv6 enable
-ipv6 address {{ local_ip_v6 }}/64
+ipv6 address {{ local_ip_v6 }} 64
 statistic enable
 
 ##################
@@ -677,7 +677,7 @@ vlan-type dot1q {{vlan_id}}
 description {{ customer_name }}
 ip address {{ local_ip_v4 }} 255.255.255.252
 ipv6 enable
-ipv6 address {{ peer_local_v6 }}/64
+ipv6 address {{ peer_local_v6 }} 64
 statistic enable
 
 ## DEPENDENCIAS**
